@@ -1,0 +1,3 @@
+[submodule "extern/blast_rush"]
+	path = extern/blast_rush
+	url = git@github.com:Dynamium-Lab/blast-rush.git
