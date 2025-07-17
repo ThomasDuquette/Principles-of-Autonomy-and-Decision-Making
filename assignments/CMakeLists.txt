@@ -13,6 +13,10 @@ function(automate_add_windows_files target_name source_file)
 endfunction()
 
 set(ASSIGNMENTS
+  # Assignment 1 purely on Java, thus I skip.
+  # Assignment 2 I built graphs.hpp.
+  # Assignment 3 did not require any programming.
+  
   
 )
 

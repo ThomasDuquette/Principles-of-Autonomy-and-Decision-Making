@@ -13,7 +13,7 @@ function(automate_add_windows_files target_name source_file)
 endfunction()
 
 set(RECITATIONS
-  rec01 rec01.cpp
+  # Currently done recitation 4, and still no recitation has needed any programming. I suspect recitations are done in class on the blackboard.
 )
 
 # Loop through and add examples

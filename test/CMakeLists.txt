@@ -44,6 +44,7 @@ set(BENCHMARKS
 )
 
 set(TESTS
+  assn04 assn04.cpp
 )
 
 # Loop through and add benchmarks
