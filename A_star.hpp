@@ -1,6 +1,8 @@
 #pragma once
-#include "blast_rush.h"
+// #include "blast_rush.h"
 #include "task.hpp"
+#include <iostream>
+#include <vector>
 
 struct Node {
     Node* parent;
@@ -12,7 +14,7 @@ struct Node {
 
 void insert_node(std::vector<Node> node_vector, Node new_node) {
     for (int i = 0; i < node_vector.size(); i++) {
-        if (new_node.path_cost <= node_vector[i].path_cost) {
+        if (new_node.total_cost <= node_vector[i].total_cost) {
             node_vector.insert(node_vector.begin() + i, new_node);
             break;
         }
@@ -69,6 +71,15 @@ Array A_star(Task task, bool* success) {
         new_node.path_cost = task.cost_from_start[i];
         insert_node(active_nodes, new_node);
     }
+
+    real total_cost = 0;
+    for (int i = 0; i < active_nodes.size(); i++) {
+        total_cost += task.minimum_cost_to_reach[i];
+    }
+
+    for (int i = 0; i < active_nodes.size(); i++) {
+        active_nodes[i].total_cost = total_cost - active_nodes[i].path_cost;
+    }
     
     while (true) {
         // STOPPING CRITERIA: If no more active nodes, that means no solutions are possible
@@ -102,7 +113,7 @@ Array A_star(Task task, bool* success) {
 
         // Find max cost to go from nodes to end (affecting all tasks)
         current_node = active_nodes[0];
-        real total_cost = 0;
+        total_cost = 0;
         for (int i = 0; i < remaining_nodes.size; i++) {
             if (remaining_nodes[i] == 1) {
                 total_cost += task.minimum_cost_to_reach[i];
