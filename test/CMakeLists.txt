@@ -40,11 +40,13 @@ endfunction()
 # NAME_OF_BENCHMARK BENCHMARK_TARGET_LOCATION
 # List of benchmarks with their source files
 set(BENCHMARKS
-
+  bench_A_star bench_A_star.cpp
 )
 
 set(TESTS
   assn04 assn04.cpp
+  test_A_star A_star.cpp
+  test_task task.cpp
 )
 
 # Loop through and add benchmarks

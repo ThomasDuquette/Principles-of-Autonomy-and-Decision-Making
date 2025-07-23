@@ -106,7 +106,7 @@ int main() {
     // task, but since you don't have your car, you would need to take a taxi. Thus you can call the 
     // taxi and do the other tasks while waiting, saving you some time.
 
-    int n_queens = 30;
+    int n_queens = 5;
 
     // // --- PROBLEM 1 ---
     // // creating problem

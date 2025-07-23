@@ -24,14 +24,9 @@ struct OrderConstraint {
     int later = 0;
 };
 
-struct PositiveDomainConstraint {
+struct DomainConstraint {
     int task_id = 0;
-    Array positive_space = {}; // Domain must be within these values
-};
-
-struct NegativeDomainConstraint {
-    int task_id = 0;
-    Array negative_space = {}; // Domain must be within these values
+    Array domain = {}; // Domain must be within these values
 };
 
 struct JointTask {
@@ -168,8 +163,7 @@ inline real trapezoidal_velocity_profile_time(JointTask task, GenericManipulator
 
 struct Task {
     std::vector<OrderConstraint> order_constraints;
-    // std::vector<PositiveDomainConstraint> positive_domain_constraints;
-    std::vector<NegativeDomainConstraint> negative_domain_constraints;
+    std::vector<DomainConstraint> domain_constraints;
 
     std::vector<JointTask> joint_space_tasks = {};
     
@@ -253,20 +247,14 @@ struct Task {
         order_constraints.push_back(new_constraint);
     }
 
-    // Constrains the domain to a specific list of possible positions.
-    // void add_domain_constraint_positive(const int task_id, const Array& positive_domain) {
-    //     PositiveDomainConstraint new_constraint;
-    //     new_constraint.task_id = task_id;
-    //     new_constraint.positive_space = positive_domain;
-    //     positive_domain_constraints.push_back(new_constraint);
-    // }
-    
-    // Constrains the domain to a specific list of impossible positions.
-    void add_domain_constraint_positive(const int task_id, const Array& negative_domain) {
-        NegativeDomainConstraint new_constraint;
+    // todo: Add following constraints
+
+    // Specify the domain of a variable to a specific list.
+    void add_domain_constraint(const int task_id, const Array& domain) {
+        DomainConstraint new_constraint;
         new_constraint.task_id = task_id;
-        new_constraint.negative_space = negative_domain;
-        negative_domain_constraints.push_back(new_constraint);
+        new_constraint.domain = domain;
+        domain_constraints.push_back(new_constraint);
     }
 
     void setup() {
@@ -327,19 +315,10 @@ struct Task {
             }
         }
 
-        for (int i = 0; i < negative_domain_constraints.size(); i++) {
-            for (int j = 0; j < negative_domain_constraints[i].negative_space.size; j++) {
-                task_domain(negative_domain_constraints[i].task_id, j) = 0;
+        for (int i = 0; i < domain_constraints.size(); i++) {
+            for (int j = 0; j < domain_constraints[i].domain.size; j++) {
+                task_domain(domain_constraints[i].task_id, j) = domain_constraints[i].domain[j];
             }
         }
-    }
-
-    real evaluate_h(const Array& remaining_tasks) {
-        real result = 0;
-        
-        for (int i = 0; i < remaining_tasks.size; i++) {
-            result += minimum_cost_to_reach[remaining_tasks[i]];
-        }
-        return result;
     }
 };
