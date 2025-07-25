@@ -34,30 +34,108 @@ Array extract_solution(const Node& node) {
     return result;
 }
 
-bool is_consistent(Task task, Node node) {
+Array extract_solution_finished(const TaskSequencingProblem task, const Node& node, std::vector<std::vector<Array>>& joint_space_solution) {
+    Array result(node.n_affected_tasks);
+    joint_space_solution.resize(task.joint_space_tasks.size() + task.cartesian_space_tasks.size());
+    auto current_node = node;
+    for (int i = node.n_affected_tasks-1; i > 0; i--) {
+        result[i] = current_node.id;
+        current_node = *current_node.parent;
+    }
+    result[0] = current_node.id;
+
+    for (int i = 0; i < result.size; i++) {
+        joint_space_solution[i].resize(2);
+        // If not cartesian task
+        if (!is_close(task.working_set[result[i]].start_position, task.working_set[result[i]].end_position)) {
+            joint_space_solution[i][0] = task.working_set[result[i]].start_position;
+            joint_space_solution[i][1] = task.working_set[result[i]].end_position;
+        } else { // cartesian task, take next end position
+            joint_space_solution[i][0] = task.working_set[result[i]].start_position;
+            joint_space_solution[i][1] = task.working_set[result[i+1]].end_position;
+            i++;
+        }
+    }
+
+    return result;
+}
+
+bool is_consistent(TaskSequencingProblem task, Node node) {
     auto candidate = extract_solution(node);
 
     auto order_constraints = task.order_constraints;
-    for (int i = 0; i < candidate.size; i++) {
+    auto following_constraints = task.following_constraints;
+    following_constraints.insert(following_constraints.end(), task.phantom_following_constraints.begin(), task.phantom_following_constraints.end());
+    // auto mutual_exclusion_constraints = task.mutual_exclusion_constraints;
+    for (int i = 0; i < candidate.size - 1; i++) {
         // Domain constraints
-        if (task.task_domain(candidate[i], i) == 0) {
+        if (task.task_domain(task.working_set[candidate[i]].task_id, i) == 0) {
             return false;
         }
 
         // Order constraints
         for (int j = 0; j < order_constraints.size(); j++) {
-            if (candidate[i] == task.order_constraints[j].earlier) {
+            if (task.working_set[candidate[i]].task_id == task.order_constraints[j].earlier) {
                 order_constraints.erase(order_constraints.begin() + j);
-            } else if (candidate[i] == task.order_constraints[j].later) {
+            } else if (task.working_set[candidate[i]].task_id == task.order_constraints[j].later) {
+                return false;
+            }
+        }
+
+        // Following constraints
+        for (int j = 0; j < following_constraints.size(); j++) {
+            if (task.working_set[candidate[i]].task_id == following_constraints[j].earlier && task.working_set[candidate[i+1]].task_id == following_constraints[j].later) {
+                following_constraints.erase(following_constraints.begin() + j);
+            } else if (task.working_set[candidate[i]].task_id == following_constraints[j].later) {
+                return false;
+            }
+        }
+
+        // Mutual exclusion constraints
+        // for (int j = 0; j < mutual_exclusion_constraints.size(); j++) {
+        //     for (int k = i+1; k < candidate.size; k++) {
+        //         if ((candidate[i] == mutual_exclusion_constraints[j].task_id_1 && candidate[j] != mutual_exclusion_constraints[j].task_id_2) && 
+        //             (candidate[i] == mutual_exclusion_constraints[j].task_id_2 && candidate[j] != mutual_exclusion_constraints[j].task_id_1)) {
+        //             return false;
+        //         }
+        //     }
+        // }
+        
+        // Same task id is automatically mutually excluded
+        // note: Only happens in cartesian tasks
+        for (int k = i+1; k < candidate.size; k++) {
+            if (task.working_set[candidate[i]].task_id == task.working_set[candidate[k]].task_id) {
                 return false;
             }
         }
     }
+
+    // Constraints on last point
+    // Domain constraints
+    if (task.task_domain(candidate[candidate.size-1], candidate.size-1) == 0) {
+        return false;
+    }
+
+    // Ordering constraints
+    for (int j = 0; j < order_constraints.size(); j++) {
+        if (candidate[candidate.size-1] == order_constraints[j].later) {
+            return false;
+        }
+    }
+
+    // Following constraints
+    for (int j = 0; j < following_constraints.size(); j++) {
+        if (candidate[candidate.size-1] == following_constraints[j].later) {
+            return false;
+        }
+    }
+
     return true;
 }
 
-Array A_star(Task task, bool* success) {
-    int n_tasks = task.joint_space_tasks.size();
+Array A_star(TaskSequencingProblem task, bool* success, std::vector<std::vector<Array>>* joint_space_solution = nullptr) {
+    int n_tasks = task.working_set.size();
+    int n_clusters = task.joint_space_tasks.size() + 2*task.cartesian_space_tasks.size();
     
     std::list<Node> active_nodes;
     std::list<Node> parent_list;
@@ -68,14 +146,14 @@ Array A_star(Task task, bool* success) {
     
     // Populate active nodes with task from initial position to beginning of every task
     real total_cost = 0;
-    for (int i = 0; i < task.joint_space_tasks.size(); i++) {
+    for (int i = 0; i < task.working_set.size(); i++) {
         total_cost += task.minimum_cost_to_reach[i];
     }
 
     Node new_node;
     new_node.n_affected_tasks = 1;
     new_node.parent = &parent_list.back();
-    for (int i = 0; i < task.joint_space_tasks.size(); i++) {
+    for (int i = 0; i < task.working_set.size(); i++) {
         new_node.id = i;
         new_node.path_cost = task.cost_from_start[i];
         new_node.total_cost = total_cost - new_node.path_cost;
@@ -94,9 +172,13 @@ Array A_star(Task task, bool* success) {
         auto current_node = active_nodes.front();
         
         // STOPPING CRITERIA: if current node is end node, that means we found optimal solution
-        if (current_node.n_affected_tasks == n_tasks) {
+        if (current_node.n_affected_tasks == n_clusters) {
             *success = true;
-            return extract_solution(current_node);
+            if (joint_space_solution) {
+                return extract_solution_finished(task, current_node, *joint_space_solution);
+            } else {
+                return extract_solution(current_node);
+            }
         }
         
         current_node = active_nodes.front();

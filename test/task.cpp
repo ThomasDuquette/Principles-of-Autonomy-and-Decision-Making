@@ -3,8 +3,11 @@
 #include "blast_rush.h"
 #include "../extern/blast_rush/tests/test_helper/test_helper.hpp"
 #include "../extern/blast_rush/tests/test_helper/test_functions.hpp"
-#include "../task.hpp"
 #include "../utilities.hpp"
+
+#define private public
+#include "../task.hpp"
+#undef private
 
 using namespace blast;
 
@@ -39,7 +42,7 @@ TEST_CASE("Task struct: add_joint_space_task(Arrays) with fully defined inputs f
     auto demo1_tasks = get_Link6_demo1_tasks_simple();
     
     JointTask joint_task(demo1_tasks[0]);
-    Task example_task(manip);
+    TaskSequencingProblem example_task(manip);
 
     example_task.add_joint_space_task(joint_task.start_position, joint_task.end_position, joint_task.start_velocity, joint_task.end_velocity, joint_task.start_acceleration, joint_task.end_acceleration);
 
@@ -57,7 +60,7 @@ TEST_CASE("Task struct: add_joint_space_task(Arrays) with partially defined inpu
     
     JointTask joint_task(demo1_tasks[0].rows);
 
-    Task example_task(manip);
+    TaskSequencingProblem example_task(manip);
 
     example_task.add_joint_space_task(joint_task.start_position, joint_task.end_position, Array(manip.joints, 1));
 
@@ -74,7 +77,7 @@ TEST_CASE("Task struct: add_joint_space_task(JointTask) with fully defined input
     auto demo1_tasks = get_Link6_demo1_tasks_simple();
     
     JointTask joint_task(demo1_tasks[0]);
-    Task example_task(manip);
+    TaskSequencingProblem example_task(manip);
 
     example_task.add_joint_space_task(joint_task);
 
@@ -92,7 +95,7 @@ TEST_CASE("Task struct: add_joint_space_task(JointTask) with partially defined i
     
     JointTask joint_task(demo1_tasks[0]);
 
-    Task example_task(manip);
+    TaskSequencingProblem example_task(manip);
 
     joint_task.start_velocity = Array(manip.joints, 1);
     joint_task.end_velocity = {};
@@ -113,7 +116,7 @@ TEST_CASE("Task struct: add_order_constraint() function test", "[Task]") {
     auto manip = get_generic_Link6();
     auto demo1_tasks = get_Link6_demo1_tasks_simple();
     
-    Task example_task(manip);
+    TaskSequencingProblem example_task(manip);
 
     for (int i = 0; i < demo1_tasks.size(); i++) {
         example_task.add_joint_space_task(JointTask(demo1_tasks[i]));
@@ -140,12 +143,13 @@ TEST_CASE("Task struct: add_order_constraint() function test", "[Task]") {
 
 TEST_CASE("Task struct: add_domain_constraint() function test", "[Task]") {
     auto manip = get_generic_Link6();
+    World world;
     auto demo1_tasks = get_Link6_demo1_tasks_simple();
     
-    Task example_task(manip);
+    TaskSequencingProblem example_task(manip);
 
     for (int i = 0; i < demo1_tasks.size(); i++) {
-        example_task.add_joint_space_task(JointTask(demo1_tasks[i]));
+        example_task.add_task(Task(demo1_tasks[i]));
     }
     
     example_task.start_position = get_Link6_home();
@@ -159,7 +163,7 @@ TEST_CASE("Task struct: add_domain_constraint() function test", "[Task]") {
     CHECK(expected_constraint.task_id == example_task.domain_constraints[0].task_id);
     CHECK(is_close(expected_constraint.domain, example_task.domain_constraints[0].domain));
 
-    example_task.setup();
+    example_task.setup(world);
 
     CHECK(example_task.task_domain(0, 0) == 1);
     CHECK(example_task.task_domain(0, 1) == 1);
@@ -171,17 +175,18 @@ TEST_CASE("Task struct: add_domain_constraint() function test", "[Task]") {
 
 TEST_CASE("Task struct: setup() function test", "[Task]") {
     auto manip = get_generic_Link6();
+    World world;
     auto demo1_tasks = get_Link6_demo1_tasks_simple();
     
-    Task example_task(manip);
+    TaskSequencingProblem example_task(manip);
 
     for (int i = 0; i < demo1_tasks.size(); i++) {
-        example_task.add_joint_space_task(JointTask(demo1_tasks[i]));
+        example_task.add_task(Task(demo1_tasks[i]));
     }
 
     example_task.start_position = get_Link6_home();
 
-    example_task.setup();
+    example_task.setup(world);
 
     Matrix expected_cost(6, 6);
     expected_cost(0, 0) = 0.0000;
